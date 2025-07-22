@@ -1,0 +1,47 @@
+{
+  "meta_version": "0.11.8",
+  "meta_type": "app",
+  "repository": "https://github.com/ItsRiprod/Deskthing-Apps",
+  "icon": "",
+  "size": 484047,
+  "appManifest": {
+    "id": "cellular-symphony",
+    "isWebApp": true,
+    "requires": [
+      ""
+    ],
+    "label": "Cellular Symphony",
+    "version": "0.11.2",
+    "version_code": "11.2",
+    "compatible_server": [
+      "11"
+    ],
+    "compatible_client": [
+      "11"
+    ],
+    "description": "Experience the mesmerizing beauty of Conway's Game of Life. Watch as simple rules create complex, evolving patterns that dance across your screen like a living symphony of cellular automation.",
+    "author": "Dammit Jeff",
+    "platforms": [
+      "windows",
+      "macos",
+      "linux"
+    ],
+    "homepage": "https://deskthing.app",
+    "repository": "https://github.com/ItsRiprod/Deskthing-Apps",
+    "tags": [
+      false,
+      false
+    ],
+    "requiredVersions": {
+      "server": ">=0.11.0",
+      "client": ">=0.11.0"
+    },
+    "updateUrl": "https://github.com/ItsRiprod/Deskthing-Apps"
+  },
+  "updateUrl": "https://github.com/ItsRiprod/Deskthing-Apps/releases/latest/download/cellular-symphony-v0.11.2.zip",
+  "hash": "4bfefc757b2178947f5915f4eea450da3d3db7593e746906876b393ef0434e2e97fe286e30a0e0edef25819cd5685eacbb8a2b5c35dff769cf4e82a5dda8c056",
+  "hashAlgorithm": "sha512",
+  "updatedAt": 1753214121735,
+  "createdAt": 1753214121735,
+  "downloads": 0
+}
