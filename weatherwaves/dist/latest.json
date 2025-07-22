@@ -3,7 +3,7 @@
   "meta_type": "app",
   "repository": "https://github.com/ItsRiprod/Deskthing-Apps",
   "icon": "",
-  "size": 484047,
+  "size": 446379,
   "appManifest": {
     "id": "cellular-symphony",
     "isWebApp": true,
@@ -39,9 +39,9 @@
     "updateUrl": "https://github.com/ItsRiprod/Deskthing-Apps"
   },
   "updateUrl": "https://github.com/ItsRiprod/Deskthing-Apps/releases/latest/download/cellular-symphony-v0.11.2.zip",
-  "hash": "4bfefc757b2178947f5915f4eea450da3d3db7593e746906876b393ef0434e2e97fe286e30a0e0edef25819cd5685eacbb8a2b5c35dff769cf4e82a5dda8c056",
+  "hash": "51df9143d34ed1f1d163f6b9648032cd2b058ae0653803e0e563c53dfa7b735ce5683338946ddad9e7c2363812a1453e9c92039155dc5b53fd3e3d936b00dca1",
   "hashAlgorithm": "sha512",
-  "updatedAt": 1753214121735,
-  "createdAt": 1753214121735,
+  "updatedAt": 1753217088889,
+  "createdAt": 1753217088889,
   "downloads": 0
 }
