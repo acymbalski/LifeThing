@@ -49,7 +49,27 @@ const App: React.FC = () => {
   const stateHistoryRef = useRef<string[]>([]);
   const stuckCounterRef = useRef<number>(0);
   const fadeStartTimeRef = useRef<number>(0);
-  const flipCellCountRef = useRef<number>(1);
+  const fibonacciIndexRef = useRef<number>(0);
+
+  // Update settings and save to localStorage
+  const updateSettings = useCallback((newSettings: Partial<GameSettings>) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      saveSettingsToStorage(updated);
+      return updated;
+    });
+  }, []);
+
+  // Calculate fibonacci number at given index (0-indexed)
+  const fibonacci = useCallback((n: number): number => {
+    if (n <= 0) return 1;
+    if (n === 1) return 1;
+    let a = 1, b = 1;
+    for (let i = 2; i <= n; i++) {
+      [a, b] = [b, a + b];
+    }
+    return b;
+  }, []);
 
   // Calculate grid dimensions based on window size, cell size, and bottom margin
   const calculateGridDimensions = useCallback(() => {
@@ -289,7 +309,7 @@ const App: React.FC = () => {
           // Reset everything if stuck too long
           stuckCounterRef.current = 0;
           stateHistoryRef.current = [];
-          flipCellCountRef.current = 1; // Reset flip count
+          fibonacciIndexRef.current = 0; // Reset fibonacci index
           const newDims = calculateGridDimensions();
           const newGrid = createRandomGrid(newDims.width, newDims.height);
           setGrid(newGrid);
@@ -298,14 +318,15 @@ const App: React.FC = () => {
           lastUpdateRef.current = timestamp;
           return;
         } else {
-          // Try flipping multiple random cells (escalating strategy)
-          const flippedGrid = flipRandomCells(nextGrid, flipCellCountRef.current);
-          flipCellCountRef.current++; // Increase for next time
+          // Try flipping cells using fibonacci sequence (1, 1, 2, 3, 5, 8, ...)
+          const cellsToFlip = fibonacci(fibonacciIndexRef.current);
+          const flippedGrid = flipRandomCells(nextGrid, cellsToFlip);
+          fibonacciIndexRef.current++; // Move to next fibonacci number
           setTargetGrid(flippedGrid);
         }
       } else {
         stuckCounterRef.current = 0;
-        flipCellCountRef.current = 1; // Reset flip count on successful evolution
+        fibonacciIndexRef.current = 0; // Reset fibonacci index on successful evolution
         setTargetGrid(nextGrid);
       }
 
@@ -353,7 +374,7 @@ const App: React.FC = () => {
     setIsFading(false);
     stateHistoryRef.current = [];
     stuckCounterRef.current = 0;
-    flipCellCountRef.current = 1; // Reset flip count
+    fibonacciIndexRef.current = 0; // Reset fibonacci index
   }, [calculateGridDimensions, createRandomGrid]);
 
   // Initialize and handle window resize
@@ -386,7 +407,7 @@ const App: React.FC = () => {
       setDimensions(newDims);
       stateHistoryRef.current = [];
       stuckCounterRef.current = 0;
-      flipCellCountRef.current = 1; // Reset flip count
+      fibonacciIndexRef.current = 0; // Reset fibonacci index
       
       // Update canvas size immediately
       const canvas = canvasRef.current;
