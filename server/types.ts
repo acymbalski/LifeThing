@@ -12,6 +12,11 @@ export type GameOfLifeSettings = {
   cell_corner_radius: number;
   neighbor_opacity_enabled: boolean;
   neighbor_opacity_increment: number;
+  color_mode: boolean;
+  random_color_chance: number;
+  saturation_factor: number;
+  max_saturation_age: number;
+  random_color_pure: boolean;
 };
 
 export type GridState = boolean[][];

@@ -2156,11 +2156,52 @@ var setupSettings = async () => {
     neighbor_opacity_increment: {
       label: "Neighbor Opacity Increment",
       id: "neighbor_opacity_increment",
-      value: 0.2,
+      value: 0.15,
       description: "Opacity increase per living neighbor (e.g., 0.15 = 15% per neighbor)",
       type: SETTING_TYPES.NUMBER,
       min: 0.01,
       max: 0.5
+    },
+    color_mode: {
+      label: "Color Mode",
+      id: "color_mode",
+      value: false,
+      description: "Enable random colors for living cells with genetic inheritance",
+      type: SETTING_TYPES.BOOLEAN
+    },
+    random_color_chance: {
+      label: "Random Color Injection",
+      id: "random_color_chance",
+      value: 0.05,
+      description: "Chance (0-1) for new cells to get random colors instead of inheriting from parents",
+      type: SETTING_TYPES.NUMBER,
+      min: 0,
+      max: 1
+    },
+    saturation_factor: {
+      label: "Age Saturation Boost",
+      id: "saturation_factor",
+      value: 0.3,
+      description: "Maximum saturation enhancement factor for aged cells (0 = no boost, 1 = 100% boost)",
+      type: SETTING_TYPES.NUMBER,
+      min: 0,
+      max: 1
+    },
+    max_saturation_age: {
+      label: "Max Saturation Age",
+      id: "max_saturation_age",
+      value: 15,
+      description: "Age at which cells reach maximum saturation boost (generations)",
+      type: SETTING_TYPES.NUMBER,
+      min: 1,
+      max: 50
+    },
+    random_color_pure: {
+      label: "Pure Random Colors",
+      id: "random_color_pure",
+      value: false,
+      description: "Use completely random colors vs. tweaked inherited colors for random injection",
+      type: SETTING_TYPES.BOOLEAN
     }
   };
   await DeskThing2.initSettings(settings);
