@@ -5,8 +5,8 @@
         ""
     ],
     "label": "LifeThing",
-    "version": "0.11.2",
-    "version_code": "11.2",
+    "version": "0.11.3",
+    "version_code": "11.3",
     "compatible_server": [
         "11"
     ],
@@ -27,8 +27,7 @@
         false
     ],
     "requiredVersions": {
-        "server": ">=0.11.0",
-        "client": ">=0.11.0"
-    },
-    "updateUrl": "https://github.com/acymbalski/LifeThing"
+        "server": ">=0.11.12",
+        "client": ">=0.11.2"
+    }
 }

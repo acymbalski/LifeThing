@@ -326,18 +326,7 @@ function isValidTaskSetting(step) {
     if (!s.setting.id) throw new Error(`[ValidateTaskSetting] Setting reference does not have an id`);
     return;
   }
-  const validTypes = [
-    "boolean",
-    "list",
-    "multiselect",
-    "number",
-    "range",
-    "ranked",
-    "select",
-    "string",
-    "color",
-    "file"
-  ];
+  const validTypes = Object.values(SETTING_TYPES2);
   if (!s.setting.type || !validTypes.includes(s.setting.type)) {
     throw new Error(
       `[ValidateTaskSetting] Step ${s.id} has invalid setting type`
@@ -379,8 +368,9 @@ var isValidSettings = (setting) => {
   switch (typedSetting.type) {
     case SETTING_TYPES2.NUMBER:
       if (typeof typedSetting.value !== "number") throw new Error("[isValidSetting] Number setting value must be a number");
-      if (typeof typedSetting.min !== "number") throw new Error("[isValidSetting] Number setting min must be a number");
-      if (typeof typedSetting.max !== "number") throw new Error("[isValidSetting] Number setting max must be a number");
+      if (typedSetting.min && typeof typedSetting.min !== "number") throw new Error("[isValidSetting] Number setting min must be a number");
+      if (typedSetting.max && typeof typedSetting.max !== "number") throw new Error("[isValidSetting] Number setting max must be a number");
+      if (typedSetting.step && typeof typedSetting.step !== "number") throw new Error("[isValidSetting] Number setting max must be a number");
       break;
     case SETTING_TYPES2.BOOLEAN:
       if (typeof typedSetting.value !== "boolean") throw new Error("[isValidSetting] Boolean setting value must be a boolean");
@@ -401,12 +391,12 @@ var isValidSettings = (setting) => {
       break;
     case SETTING_TYPES2.RANGE:
       if (typeof typedSetting.value !== "number") throw new Error("[isValidSetting] Range setting value must be a number");
-      if (typeof typedSetting.min !== "number") throw new Error("[isValidSetting] Range setting min must be a number");
-      if (typeof typedSetting.max !== "number") throw new Error("[isValidSetting] Range setting max must be a number");
-      if (typedSetting.step && typeof typedSetting.step !== "number") throw new Error("[isValidSetting] Range setting step must be a number");
+      if (typedSetting.min && typeof typedSetting.min !== "number") throw new Error("[isValidSetting] Range setting min must be a number");
+      if (typedSetting.max && typeof typedSetting.max !== "number") throw new Error("[isValidSetting] Range setting max must be a number");
+      if (typedSetting.step && typeof typedSetting.step !== "number") throw new Error("[isValidSetting] Range setting max must be a number");
       break;
     case SETTING_TYPES2.COLOR:
-      if (typeof typedSetting.value !== "string") throw new Error("[isValidSetting] Color setting value must be a string");
+      if (typedSetting.value && typeof typedSetting.value !== "string") throw new Error("[isValidSetting] Color setting value must be a string");
       break;
     case SETTING_TYPES2.FILE:
       break;
@@ -418,6 +408,7 @@ var isValidSettings = (setting) => {
 var sanitizeSettings = (setting) => {
   isValidSettings(setting);
   const commonSettings = {
+    ...setting,
     disabled: setting.disabled,
     id: setting.id,
     label: setting.label || setting.id || "",
@@ -624,7 +615,7 @@ var DeskThingClass = class _DeskThingClass {
     this.sysListeners = [];
     this.backgroundTasks = [];
     this.stopRequested = false;
-    this.fetch = async (requestData, listenData, callback, timeoutMs = 5e3) => {
+    this.fetch = async (requestData, listenData, callback, timeoutMs = 500) => {
       if (!requestData.type) {
         console.warn(`[fetch]: Request Data doesn't have a "type" field`);
         return void 0;
@@ -692,7 +683,6 @@ var DeskThingClass = class _DeskThingClass {
       }
     };
     this.setSettings = async (settings) => {
-      console.log("Adding settings... " + Object.keys(settings).toString());
       const existingSettings = await this.getSettings() || {};
       if (!settings || typeof settings !== "object") {
         throw new Error("Settings must be a valid object");
@@ -715,7 +705,6 @@ var DeskThingClass = class _DeskThingClass {
           }
         }
       });
-      console.log("Saving settings");
       this.saveSettings(existingSettings);
     };
     this.setSettingOptions = async (settingId, options) => {
@@ -728,7 +717,7 @@ var DeskThingClass = class _DeskThingClass {
         settingHasOptions(existingSettings[settingId]);
       } catch (error) {
         if (error instanceof Error) {
-          console.error(error.message);
+          console.error(`Error setting option of setting: ${settingId}`, error.message);
         }
         return;
       }
@@ -783,11 +772,20 @@ var DeskThingClass = class _DeskThingClass {
       initTasks: async (taskData) => {
         try {
           const newTasks = Object.entries(taskData).reduce(
-            (validatedTasks, [_id, task]) => {
+            (validatedTasks, [id, task]) => {
               try {
                 const newTask = {
                   ...task,
-                  source: this.manifest?.id || "unknown"
+                  id,
+                  source: this.manifest?.id || "unknown",
+                  steps: Object.fromEntries(Object.entries(task.steps).map(([stepId, step]) => [
+                    stepId,
+                    {
+                      ...step,
+                      id: step.id || stepId,
+                      source: step.source || this.manifest?.id || "unknown"
+                    }
+                  ]))
                 };
                 isValidTask(newTask);
                 return { ...validatedTasks, [newTask.id]: newTask };
@@ -1211,7 +1209,6 @@ var DeskThingClass = class _DeskThingClass {
    * deskThing.send({ type: 'doSomething' });
    */
   on(event, callback) {
-    console.log("Registered a new listener for event: " + event);
     if (!this.Listeners[event]) {
       this.Listeners[event] = [];
     }
@@ -1441,7 +1438,10 @@ var DeskThingClass = class _DeskThingClass {
       },
       {
         type: DESKTHING_EVENTS2.SETTINGS
-      }
+      },
+      () => {
+      },
+      500
     );
     if (!socketData?.payload) {
       console.error("[getSettings]: Settings are not defined!");
@@ -1456,13 +1456,7 @@ var DeskThingClass = class _DeskThingClass {
    * @param settings The settings object
    */
   async initSettings(settings) {
-    const existingSettings = await this.getSettings();
-    const newSettings = Object.fromEntries(
-      Object.entries(settings).filter(
-        ([key]) => !existingSettings || !(key in existingSettings)
-      )
-    );
-    this.setSettings(newSettings);
+    this.sendSocketData(APP_REQUESTS.SET, settings, "settings-init");
   }
   /**
    * Deletes settings from the server
@@ -1528,6 +1522,47 @@ var DeskThingClass = class _DeskThingClass {
       throw new Error("Action must have a valid id");
     }
     this.sendSocketData(APP_REQUESTS.ACTION, action, "add");
+  }
+  /**
+   * Registers a new action to the server. This can be mapped to any key on the deskthingserver UI.
+   *
+   * @param action - The action object to register.
+   * @throws {Error} If the action object is invalid.
+   * @example
+   * const action = {
+   *      name: 'Like'
+   *      description: 'Likes the currently playing song'
+   *      id: 'likesong'
+   *      value: 'toggle'
+   *      value_options: ['like', 'dislike', 'toggle']
+   *      value_instructions: 'Determines whether to like, dislike, or toggle the currently liked song'
+   *      icon: 'likesongicon' // overrides "id" and instead looks in /public/icons/likesongicon.svg
+   *      version: 'v0.10.1'
+   *      tag: 'media'
+   * }
+   * DeskThing.registerAction(action)
+   * DeskThing.on('action', (data) => {
+   *      if (data.payload.id === 'likesong') {
+   *          DeskThing.sendLog('Like Song value is set to: ', data.value)
+   *      }
+   * })
+   * @example
+   * // Super minimal action
+   * const action = {
+   *      id: 'trigger' // looks for icon in /public/icons/trigger.svg
+   * }
+   * DeskThing.registerAction(action)
+   * DeskThing.on('action', (data) => {
+   *      if (data.payload.id === 'trigger') {
+   *          DeskThing.sendLog('An action was triggered!')
+   *      }
+   * })
+   */
+  initActions(actions) {
+    if (!actions || !Array.isArray(actions)) {
+      throw new Error("Invalid action object");
+    }
+    this.sendSocketData(APP_REQUESTS.ACTION, actions, "init");
   }
   /**
    * Registers a new action to the server. This can be mapped to any key on the deskthingserver UI.
@@ -1606,7 +1641,7 @@ var DeskThingClass = class _DeskThingClass {
       source: this.manifest?.id || "unknown",
       enabled: true
     };
-    this.sendSocketData(APP_REQUESTS.KEY, key, "add");
+    this.sendSocketData(APP_REQUESTS.KEY, newKey, "add");
   }
   /**
    * Removes an action with the specified identifier.
@@ -1652,13 +1687,9 @@ var DeskThingClass = class _DeskThingClass {
     sync && this.sendSocketData(APP_REQUESTS.SET, data, "data");
   }
   /**
-   * Saves settings to server - overwriting existing settings and notifies listeners
+   * Saves settings to server - overwriting existing settings
    */
   saveSettings(settings) {
-    this.notifyListeners(DESKTHING_EVENTS2.SETTINGS, {
-      type: DESKTHING_EVENTS2.SETTINGS,
-      payload: settings
-    });
     this.sendSocketData(APP_REQUESTS.SET, settings, "settings");
   }
   /**
@@ -1869,7 +1900,6 @@ var DeskThingClass = class _DeskThingClass {
       process.env.DESKTHING_ROOT_PATH || __dirname,
       "../deskthing/manifest.json"
     );
-    console.log(devManifestPath);
     const oldBuiltManifestPath = path.resolve(
       process.env.DESKTHING_ROOT_PATH || __dirname,
       "./manifest.json"
@@ -1958,9 +1988,7 @@ var DeskThingClass = class _DeskThingClass {
       });
       this.stopRequested = true;
       this.backgroundTasks.forEach((cancel) => cancel());
-      console.log("Background tasks stopped");
       this.clearCache();
-      console.log("Cache cleared");
     } catch (error) {
       console.error("Error in Purge:", error);
       return {
@@ -1996,7 +2024,6 @@ var DeskThingClass = class _DeskThingClass {
         }
       })
     );
-    console.log("Cache cleared");
   }
   /**
    * @returns
@@ -2028,9 +2055,8 @@ var DeskThingClass = class _DeskThingClass {
           console.log("Received message from server:" + data.payload);
           break;
         case DESKTHING_EVENTS2.SETTINGS:
-          console.debug("Received settings from server:", data.payload);
           if (!data.payload) {
-            console.log("Received invalid settings from server:", data);
+            console.warn("Received invalid settings from server:", data);
           } else {
             const settings = data.payload;
             this.notifyListeners(DESKTHING_EVENTS2.SETTINGS, {
@@ -2067,14 +2093,14 @@ var setupSettings = async () => {
       id: "background_color",
       value: "#000000",
       description: "Set the background color using a hex value (e.g., #000000 for black)",
-      type: SETTING_TYPES.STRING
+      type: SETTING_TYPES.COLOR
     },
     foreground_color: {
       label: "Cell Color",
       id: "foreground_color",
       value: "#1db954",
       description: "Set the color of living cells using a hex value (e.g., #ffffff for white)",
-      type: SETTING_TYPES.STRING
+      type: SETTING_TYPES.COLOR
     },
     cell_size: {
       label: "Cell Size (Zoom Level)",
@@ -2158,9 +2184,16 @@ var setupSettings = async () => {
       id: "neighbor_opacity_increment",
       value: 0.15,
       description: "Opacity increase per living neighbor (e.g., 0.15 = 15% per neighbor)",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 0.01,
-      max: 0.5
+      max: 0.5,
+      step: 0.01,
+      dependsOn: [
+        {
+          settingId: "neighbor_opacity_enabled"
+          // makes it so it only works when Neighbor Opacity is enabled
+        }
+      ]
     },
     color_mode: {
       label: "Color Mode",
@@ -2174,34 +2207,61 @@ var setupSettings = async () => {
       id: "random_color_chance",
       value: 0.05,
       description: "Chance (0-1) for new cells to get random colors instead of inheriting from parents",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 0,
-      max: 1
+      max: 1,
+      step: 0.01,
+      dependsOn: [
+        {
+          settingId: "color_mode"
+          // makes it so it only works when Color Mode is true
+        }
+      ]
     },
     saturation_factor: {
       label: "Age Saturation Boost",
       id: "saturation_factor",
       value: 0.3,
       description: "Maximum saturation enhancement factor for aged cells (0 = no boost, 1 = 100% boost)",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 0,
-      max: 1
+      max: 1,
+      step: 0.01,
+      dependsOn: [
+        {
+          settingId: "color_mode"
+          // makes it so it only works when Color Mode is true
+        }
+      ]
     },
     max_saturation_age: {
       label: "Max Saturation Age",
       id: "max_saturation_age",
       value: 15,
       description: "Age at which cells reach maximum saturation boost (generations)",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 1,
-      max: 50
+      max: 50,
+      step: 1,
+      dependsOn: [
+        {
+          settingId: "color_mode"
+          // makes it so it only works when Color Mode is true
+        }
+      ]
     },
     random_color_pure: {
       label: "Pure Random Colors",
       id: "random_color_pure",
       value: false,
       description: "Use completely random colors vs. tweaked inherited colors for random injection",
-      type: SETTING_TYPES.BOOLEAN
+      type: SETTING_TYPES.BOOLEAN,
+      dependsOn: [
+        {
+          settingId: "color_mode"
+          // makes it so it only works when Color Mode is true
+        }
+      ]
     }
   };
   await DeskThing2.initSettings(settings);

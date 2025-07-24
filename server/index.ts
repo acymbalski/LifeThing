@@ -19,14 +19,14 @@ const setupSettings = async () => {
       id: 'background_color',
       value: "#000000",
       description: "Set the background color using a hex value (e.g., #000000 for black)",
-      type: SETTING_TYPES.STRING,
+      type: SETTING_TYPES.COLOR,
     },
     foreground_color: {
       label: "Cell Color",
       id: 'foreground_color',
       value: "#1db954",
       description: "Set the color of living cells using a hex value (e.g., #ffffff for white)",
-      type: SETTING_TYPES.STRING,
+      type: SETTING_TYPES.COLOR,
     },
     cell_size: {
       label: "Cell Size (Zoom Level)",
@@ -110,9 +110,16 @@ const setupSettings = async () => {
       id: 'neighbor_opacity_increment',
       value: 0.15,
       description: "Opacity increase per living neighbor (e.g., 0.15 = 15% per neighbor)",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 0.01,
       max: 0.5,
+      step: 0.01,
+      dependsOn:
+        [
+          {
+            settingId: 'neighbor_opacity_enabled', // makes it so it only works when Neighbor Opacity is enabled
+          }
+        ]
     },
     color_mode: {
       label: "Color Mode",
@@ -126,27 +133,48 @@ const setupSettings = async () => {
       id: 'random_color_chance',
       value: 0.05,
       description: "Chance (0-1) for new cells to get random colors instead of inheriting from parents",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 0,
       max: 1,
+      step: 0.01,
+      dependsOn:
+        [
+          {
+            settingId: 'color_mode', // makes it so it only works when Color Mode is true
+          }
+        ]
     },
     saturation_factor: {
       label: "Age Saturation Boost",
       id: 'saturation_factor',
       value: 0.3,
       description: "Maximum saturation enhancement factor for aged cells (0 = no boost, 1 = 100% boost)",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 0,
       max: 1,
+      step: 0.01,
+      dependsOn:
+        [
+          {
+            settingId: 'color_mode', // makes it so it only works when Color Mode is true
+          }
+        ]
     },
     max_saturation_age: {
       label: "Max Saturation Age",
       id: 'max_saturation_age',
       value: 15,
       description: "Age at which cells reach maximum saturation boost (generations)",
-      type: SETTING_TYPES.NUMBER,
+      type: SETTING_TYPES.RANGE,
       min: 1,
       max: 50,
+      step: 1,
+      dependsOn:
+        [
+          {
+            settingId: 'color_mode', // makes it so it only works when Color Mode is true
+          }
+        ]
     },
     random_color_pure: {
       label: "Pure Random Colors",
@@ -154,6 +182,12 @@ const setupSettings = async () => {
       value: false,
       description: "Use completely random colors vs. tweaked inherited colors for random injection",
       type: SETTING_TYPES.BOOLEAN,
+      dependsOn:
+        [
+          {
+            settingId: 'color_mode', // makes it so it only works when Color Mode is true
+          }
+        ]
     },
   };
 
