@@ -46,6 +46,45 @@ const setupSettings = async () => {
       min: 100,
       max: 4000,
     },
+    grid_population_percentage: {
+      label: "Grid Population Percentage",
+      id: 'grid_population_percentage',
+      value: 0.3,
+      description: "Percentage of cells that are alive when resetting or starting new simulation (0.0 = empty, 1.0 = completely full)",
+      type: SETTING_TYPES.RANGE,
+      min: 0.01,
+      max: 1.0,
+      step: 0.01,
+    },
+    try_revive_stuck_sim: {
+      label: "Try to Revive Stuck Sim",
+      id: 'try_revive_stuck_sim',
+      value: true,
+      description: "Attempt to revive stuck simulations by dropping new live cells",
+      type: SETTING_TYPES.BOOLEAN,
+    },
+    hard_reset_on_stuck: {
+      label: "Hard Reset on Stuck",
+      id: 'hard_reset_on_stuck',
+      value: false,
+      description: "Immediately reset simulation when any stuck state is detected (overrides revival attempts)",
+      type: SETTING_TYPES.BOOLEAN,
+    },
+    max_revival_attempts: {
+      label: "Max Revival Attempts",
+      id: 'max_revival_attempts',
+      value: 5,
+      description: "Number of attempts to revive stuck simulation before resetting (only when revival is enabled)",
+      type: SETTING_TYPES.NUMBER,
+      min: 1,
+      max: 20,
+      dependsOn:
+        [
+          {
+            settingId: 'try_revive_stuck_sim', // makes it so it only works when Try to Revive Stuck Sim is enabled
+          }
+        ],
+    },
     fade_amount: {
       label: "Fade Transition",
       id: 'fade_amount',

@@ -13,6 +13,10 @@ interface GameSettings {
   foreground_color: string;
   cell_size: number;
   simulation_speed: number;
+  try_revive_stuck_sim: boolean; // Added for stuck sim control
+  hard_reset_on_stuck: boolean; // Added for stuck sim control
+  max_revival_attempts: number; // Added for stuck sim control
+  grid_population_percentage: number; // Added for grid reset control
   fade_amount: number;
   stable_display_time: number;
   edge_wrapping: boolean;
@@ -34,6 +38,10 @@ const DEFAULT_SETTINGS: GameSettings = {
   foreground_color: "#ffffff", 
   cell_size: 8,
   simulation_speed: 500,
+  try_revive_stuck_sim: true, // Added for stuck sim control
+  hard_reset_on_stuck: false, // Added for stuck sim control
+  max_revival_attempts: 5, // Added for stuck sim control
+  grid_population_percentage: 0.3, // Added for grid reset control
   fade_amount: 0.3,
   stable_display_time: 200,
   edge_wrapping: true,
@@ -208,15 +216,15 @@ const App: React.FC = () => {
   // Create random grid
   const createRandomGrid = useCallback((width: number, height: number): GridState => {
     return Array(height).fill(null).map(() => 
-      Array(width).fill(null).map(() => Math.random() < 0.3)
+      Array(width).fill(null).map(() => Math.random() < settings.grid_population_percentage)
     );
-  }, []);
+  }, [settings.grid_population_percentage]);
 
   // Create random colored grid
   const createRandomColoredGrid = useCallback((width: number, height: number): ColoredGridState => {
     return Array(height).fill(null).map(() => 
       Array(width).fill(null).map(() => {
-        const alive = Math.random() < 0.3;
+        const alive = Math.random() < settings.grid_population_percentage;
         return {
           alive,
           color: alive ? generateRandomColor() : undefined,
@@ -224,7 +232,7 @@ const App: React.FC = () => {
         };
       })
     );
-  }, [generateRandomColor]);
+  }, [generateRandomColor, settings.grid_population_percentage]);
 
   // Count living neighbors for a cell (standard version)
   const countNeighbors = useCallback((grid: GridState, x: number, y: number): number => {
@@ -610,9 +618,11 @@ const App: React.FC = () => {
         const nextGrid = nextGenerationColored(coloredGrid);
         
         if (isSimulationStuck(nextGrid)) {
-          stuckCounterRef.current++;
-          if (stuckCounterRef.current > 5) {
-            // Reset everything if stuck too long
+          // Check if simulation is completely empty
+          const isEmpty = !(nextGrid as ColoredGridState).some(row => row.some(cell => cell.alive));
+          
+          // If hard reset on stuck is enabled, always reset immediately
+          if (settings.hard_reset_on_stuck) {
             stuckCounterRef.current = 0;
             stateHistoryRef.current = [];
             fibonacciIndexRef.current = 0;
@@ -623,13 +633,29 @@ const App: React.FC = () => {
             setIsFading(false);
             lastUpdateRef.current = timestamp;
             return;
+          }
+          
+          // If try_revive_stuck_sim is disabled, only reset when completely empty
+          if (isEmpty) {
+            stuckCounterRef.current = 0;
+            stateHistoryRef.current = [];
+            fibonacciIndexRef.current = 0;
+            const newDims = calculateGridDimensions();
+            const newGrid = createRandomColoredGrid(newDims.width, newDims.height);
+            setColoredGrid(newGrid);
+            setTargetColoredGrid([]);
+            setIsFading(false);
+            lastUpdateRef.current = timestamp;
+            return;
+          }
+          if (!settings.try_revive_stuck_sim) {
+            // Not empty and revival disabled, just use the stuck grid as-is
+            setTargetColoredGrid(nextGrid);
           } else {
-            // Try flipping cells using fibonacci sequence
-            const cellsToFlip = fibonacci(fibonacciIndexRef.current);
-            const totalCells = coloredGrid.length * coloredGrid[0].length;
-            
-            // If we're about to flip more than 1/3 of cells, just do a full reset
-            if (cellsToFlip > totalCells / 3) {
+            // Revival is enabled, try fibonacci sequence
+            stuckCounterRef.current++;
+            if (stuckCounterRef.current > settings.max_revival_attempts) {
+              // Reset everything if stuck too long
               stuckCounterRef.current = 0;
               stateHistoryRef.current = [];
               fibonacciIndexRef.current = 0;
@@ -640,11 +666,29 @@ const App: React.FC = () => {
               setIsFading(false);
               lastUpdateRef.current = timestamp;
               return;
+            } else {
+              // Try flipping cells using fibonacci sequence
+              const cellsToFlip = fibonacci(fibonacciIndexRef.current);
+              const totalCells = coloredGrid.length * coloredGrid[0].length;
+              
+              // If we're about to flip more than 1/3 of cells, just do a full reset
+              if (cellsToFlip > totalCells / 3) {
+                stuckCounterRef.current = 0;
+                stateHistoryRef.current = [];
+                fibonacciIndexRef.current = 0;
+                const newDims = calculateGridDimensions();
+                const newGrid = createRandomColoredGrid(newDims.width, newDims.height);
+                setColoredGrid(newGrid);
+                setTargetColoredGrid([]);
+                setIsFading(false);
+                lastUpdateRef.current = timestamp;
+                return;
+              }
+              
+              const flippedGrid = flipRandomCellsColored(nextGrid, cellsToFlip);
+              fibonacciIndexRef.current++;
+              setTargetColoredGrid(flippedGrid);
             }
-            
-            const flippedGrid = flipRandomCellsColored(nextGrid, cellsToFlip);
-            fibonacciIndexRef.current++;
-            setTargetColoredGrid(flippedGrid);
           }
         } else {
           stuckCounterRef.current = 0;
@@ -655,9 +699,11 @@ const App: React.FC = () => {
         const nextGrid = nextGeneration(grid);
         
         if (isSimulationStuck(nextGrid)) {
-          stuckCounterRef.current++;
-          if (stuckCounterRef.current > 5) {
-            // Reset everything if stuck too long
+          // Check if simulation is completely empty
+          const isEmpty = !(nextGrid as GridState).some(row => row.some(cell => cell));
+          
+          // If hard reset on stuck is enabled, always reset immediately
+          if (settings.hard_reset_on_stuck ){
             stuckCounterRef.current = 0;
             stateHistoryRef.current = [];
             fibonacciIndexRef.current = 0;
@@ -668,13 +714,29 @@ const App: React.FC = () => {
             setIsFading(false);
             lastUpdateRef.current = timestamp;
             return;
+          }
+          
+          // If try_revive_stuck_sim is disabled, only reset when completely empty
+          if (isEmpty) {
+            stuckCounterRef.current = 0;
+            stateHistoryRef.current = [];
+            fibonacciIndexRef.current = 0;
+            const newDims = calculateGridDimensions();
+            const newGrid = createRandomGrid(newDims.width, newDims.height);
+            setGrid(newGrid);
+            setTargetGrid([]);
+            setIsFading(false);
+            lastUpdateRef.current = timestamp;
+            return;
+          }
+          if (!settings.try_revive_stuck_sim) {
+              // Not empty and revival disabled, just use the stuck grid as-is
+              setTargetGrid(nextGrid);
           } else {
-            // Try flipping cells using fibonacci sequence
-            const cellsToFlip = fibonacci(fibonacciIndexRef.current);
-            const totalCells = grid.length * grid[0].length;
-            
-            // If we're about to flip more than 1/3 of cells, just do a full reset
-            if (cellsToFlip > totalCells / 3) {
+            // Revival is enabled, try fibonacci sequence
+            stuckCounterRef.current++;
+            if (stuckCounterRef.current > settings.max_revival_attempts) {
+              // Reset everything if stuck too long
               stuckCounterRef.current = 0;
               stateHistoryRef.current = [];
               fibonacciIndexRef.current = 0;
@@ -685,11 +747,29 @@ const App: React.FC = () => {
               setIsFading(false);
               lastUpdateRef.current = timestamp;
               return;
+            } else {
+              // Try flipping cells using fibonacci sequence
+              const cellsToFlip = fibonacci(fibonacciIndexRef.current);
+              const totalCells = grid.length * grid[0].length;
+              
+              // If we're about to flip more than 1/3 of cells, just do a full reset
+              if (cellsToFlip > totalCells / 3) {
+                stuckCounterRef.current = 0;
+                stateHistoryRef.current = [];
+                fibonacciIndexRef.current = 0;
+                const newDims = calculateGridDimensions();
+                const newGrid = createRandomGrid(newDims.width, newDims.height);
+                setGrid(newGrid);
+                setTargetGrid([]);
+                setIsFading(false);
+                lastUpdateRef.current = timestamp;
+                return;
+              }
+              
+              const flippedGrid = flipRandomCells(nextGrid, cellsToFlip);
+              fibonacciIndexRef.current++;
+              setTargetGrid(flippedGrid);
             }
-            
-            const flippedGrid = flipRandomCells(nextGrid, cellsToFlip);
-            fibonacciIndexRef.current++;
-            setTargetGrid(flippedGrid);
           }
         } else {
           stuckCounterRef.current = 0;
@@ -891,6 +971,18 @@ const App: React.FC = () => {
         if (data.payload.simulation_speed?.value) {
           newSettings.simulation_speed = data.payload.simulation_speed.value as number;
         }
+        if (data.payload.try_revive_stuck_sim?.value !== undefined) {
+          newSettings.try_revive_stuck_sim = data.payload.try_revive_stuck_sim.value as boolean;
+        }
+        if (data.payload.hard_reset_on_stuck?.value !== undefined) {
+          newSettings.hard_reset_on_stuck = data.payload.hard_reset_on_stuck.value as boolean;
+        }
+        if (data.payload.max_revival_attempts?.value !== undefined) {
+          newSettings.max_revival_attempts = data.payload.max_revival_attempts.value as number;
+        }
+        if (data.payload.grid_population_percentage?.value !== undefined) {
+          newSettings.grid_population_percentage = data.payload.grid_population_percentage.value as number;
+        }
         if (data.payload.fade_amount?.value !== undefined) {
           newSettings.fade_amount = data.payload.fade_amount.value as number;
         }
@@ -953,6 +1045,18 @@ const App: React.FC = () => {
         }
         if (initialSettings.simulation_speed?.value) {
           newSettings.simulation_speed = initialSettings.simulation_speed.value as number;
+        }
+        if (initialSettings.try_revive_stuck_sim?.value !== undefined) {
+          newSettings.try_revive_stuck_sim = initialSettings.try_revive_stuck_sim.value as boolean;
+        }
+        if (initialSettings.hard_reset_on_stuck?.value !== undefined) {
+          newSettings.hard_reset_on_stuck = initialSettings.hard_reset_on_stuck.value as boolean;
+        }
+        if (initialSettings.max_revival_attempts?.value !== undefined) {
+          newSettings.max_revival_attempts = initialSettings.max_revival_attempts.value as number;
+        }
+        if (initialSettings.grid_population_percentage?.value !== undefined) {
+          newSettings.grid_population_percentage = initialSettings.grid_population_percentage.value as number;
         }
         if (initialSettings.fade_amount?.value !== undefined) {
           newSettings.fade_amount = initialSettings.fade_amount.value as number;
